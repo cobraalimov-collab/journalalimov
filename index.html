@@ -1,1119 +1,518 @@
 <!DOCTYPE html>
+<!--
+=====================================================================
+  TRADING JURNALI — ONE-CLICK PAYWALL ($50 Lifetime)
+=====================================================================
+  QUICK SETUP (edit only the CONFIG block below):
+    1. CARD_PAYMENT_URL   -> your Lemon Squeezy / Gumroad / Stripe checkout link
+    2. CRYPTO_PAYMENT_URL -> your Cryptomus / NOWPayments checkout link
+    3. VALID_KEYS         -> license keys you issued (local mode only)
+    4. VERIFY_URL         -> optional Cloudflare Worker / Supabase endpoint
+                             (recommended: real multi-device protection)
+    5. ADMIN_SECRET       -> your secret owner shortcut: ?admin=YOUR_SECRET
+  Deploy: push this file to GitHub and import the repo on Vercel
+  (or drop index.html into any static host). No build step needed.
+=====================================================================
+-->
 <html lang="uz">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Trading Jurnali</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-:root{
-  --bg:#0f1115;--panel:#181b22;--panel2:#12141a;--line:#2a2f3a;--text:#e6e8ee;--muted:#8a90a0;
-  --green:#22c55e;--red:#ef4444;--gray:#64748b;--blue:#3b82f6;
-  color-scheme:dark;
-}
-*{box-sizing:border-box}
-[hidden]{display:none!important}
-body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text)}
-h1,h2{margin:0}
-h1{font-size:20px}
-h2{font-size:16px}
-a{color:var(--blue);text-decoration:none}
-.row{display:flex;align-items:center;gap:8px}
-.wrap{flex-wrap:wrap}
-.muted{color:var(--muted)}
-.small{font-size:12px}
-.pos{color:var(--green);font-weight:600}
-.neg{color:var(--red);font-weight:600}
+  :root{--bg:#0B0B0F;--card:#15151C;--line:#26262F;--text:#EDEDF2;--mut:#8A8A99;
+        --g:#22C55E;--r:#EF4444;--gold:#F5B82E;--blue:#3B82F6}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .hidden{display:none!important}
+  input,select,button{font:inherit}
+  input,select{background:#0F0F15;color:var(--text);border:1px solid var(--line);
+    border-radius:8px;padding:7px 8px;min-width:0}
+  input:focus,select:focus{outline:1px solid var(--gold)}
 
-/* Buttons */
-.btn{display:inline-flex;align-items:center;gap:6px;background:var(--blue);color:#fff;border:1px solid transparent;padding:9px 16px;border-radius:8px;font:inherit;font-size:14px;cursor:pointer;white-space:nowrap}
-.btn:hover{filter:brightness(1.1)}
-.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
-.btn.ghost{background:transparent;border-color:var(--line);color:var(--text)}
-.btn.danger{background:var(--red)}
-.btn.small{padding:5px 10px;font-size:12px}
-.icon{background:transparent;border:0;color:var(--muted);cursor:pointer;font-size:15px;padding:4px 6px;border-radius:6px}
-.icon:hover{color:var(--text);background:#1f232d}
+  /* ---------- PAYWALL ---------- */
+  #paywall{min-height:100vh;display:flex;justify-content:center;align-items:flex-start;
+    padding:28px 16px;position:relative;overflow:hidden}
+  .preview{position:absolute;inset:0;padding:24px;filter:blur(7px) saturate(.7);
+    opacity:.45;pointer-events:none;user-select:none}
+  .preview .pv-card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:14px;margin-bottom:14px;height:110px}
+  .preview .pv-chart{height:180px;background:linear-gradient(180deg,#1d1d28,#15151C);
+    border-radius:14px;border:1px solid var(--line)}
+  .pw-card{position:relative;z-index:2;width:100%;max-width:440px;background:rgba(21,21,28,.96);
+    border:1px solid var(--line);border-radius:20px;padding:26px 22px;
+    box-shadow:0 20px 60px rgba(0,0,0,.6);margin-top:20px;text-align:center}
+  .badge{display:inline-block;font-size:12px;color:var(--gold);border:1px solid var(--gold);
+    border-radius:999px;padding:4px 12px;margin-bottom:12px}
+  .pw-card h1{margin:4px 0 6px;font-size:28px}
+  .sub{color:var(--mut);margin:0 0 16px;font-size:15px}
+  .features{list-style:none;padding:0;margin:0 0 18px;text-align:left;display:grid;gap:8px}
+  .features li{background:#0F0F15;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .price{font-size:20px;font-weight:700;color:var(--gold);margin-bottom:16px}
+  .price small{display:block;font-size:13px;color:var(--mut);font-weight:400}
+  .btn{display:block;text-decoration:none;color:#fff;font-weight:700;border-radius:12px;
+    padding:15px;margin:10px 0;font-size:16px;border:0;cursor:pointer;transition:transform .1s}
+  .btn:active{transform:scale(.98)}
+  .btn-card{background:linear-gradient(135deg,#F5B82E,#E0930B);color:#111}
+  .btn-crypto{background:linear-gradient(135deg,#22C55E,#15803D)}
+  .divider{height:1px;background:var(--line);margin:18px 0}
+  .pw-card label{display:block;color:var(--mut);font-size:14px;margin-bottom:8px}
+  .keyrow{display:flex;gap:8px}
+  .keyrow input{flex:1;padding:12px}
+  .keyrow button{background:var(--blue);color:#fff;border:0;border-radius:10px;padding:0 16px;
+    font-weight:600;cursor:pointer}
+  .msg{min-height:20px;font-size:14px;margin:12px 0 0;color:var(--r)}
+  .msg.ok{color:var(--g)}
 
-/* Inputs */
-input,select,textarea{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:8px 10px;border-radius:8px;font:inherit;font-size:14px;min-width:0}
-textarea{width:100%;resize:vertical;min-height:90px}
-.fill{width:100%}
-input.narrow{width:130px}
-
-/* Header */
-.topbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid var(--line)}
-.notice{margin:12px 24px 0;padding:10px 14px;border-radius:8px;background:#1e293b;border:1px solid #334155;font-size:13px}
-
-/* Stats */
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;padding:20px 24px 8px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
-.card .label{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
-.card .value{font-size:22px;font-weight:600;margin-top:6px}
-
-/* Charts */
-.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:16px;padding:12px 24px 8px}
-.card-head{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
-.card-head .small{margin-top:4px}
-.chart-box{position:relative;height:280px}
-.chart-warn{color:#fca5a5;font-size:13px}
-.chart-controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.chart-controls label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
-
-/* Monthly percentage cards */
-.monthly{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;padding:12px 24px 8px}
-.mcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;text-align:left;color:var(--text);font:inherit;cursor:pointer}
-.mcard:hover{border-color:#3b4252}
-.mcard.active{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}
-.mtitle{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
-.mpct{font-size:24px;font-weight:700;margin-top:6px}
-.msub{font-size:12px;color:var(--muted);margin-top:4px}
-
-/* Toolbar */
-.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:16px 24px 12px}
-.toolbar select{width:auto}
-.search{flex:1;min-width:220px}
-.dropdown-wrap{position:relative}
-.dropdown{position:absolute;top:calc(100% + 6px);right:0;z-index:20;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;min-width:200px;display:flex;flex-direction:column;gap:2px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
-.check{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;font-size:13px;cursor:pointer}
-.check:hover{background:#1f232d}
-.check input{width:auto}
-.rowcount{font-size:12px;color:var(--muted);padding:0 24px 8px}
-
-/* Table (Notion-style grid) */
-.table-block{margin:0 24px 40px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel2)}
-.table-wrap{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:13px;min-width:1400px}
-th,td{padding:8px 10px;border-bottom:1px solid var(--line);border-right:1px solid #1d212a;text-align:left;white-space:nowrap;vertical-align:middle}
-th{background:var(--panel2);color:var(--muted);font-weight:500}
-tbody tr:hover td{background:#1a1e27}
-#tbody input,#tbody select{background:transparent;border:1px solid transparent;padding:5px 6px;border-radius:6px;font:inherit;font-size:13px;color:var(--text);width:auto;min-width:70px}
-#tbody input:hover,#tbody select:hover{border-color:var(--line)}
-#tbody input:focus,#tbody select:focus{background:var(--panel2);border-color:var(--blue);outline:none}
-#tbody input.num{width:86px}
-#tbody input.pair{min-width:110px;font-weight:600}
-#tbody input.wide{min-width:260px}
-#tbody input.link{min-width:150px}
-#tbody input.pos{color:var(--green);font-weight:600}
-#tbody input.neg{color:var(--red);font-weight:600}
-.unit{display:inline-flex;align-items:center;gap:2px;color:var(--muted)}
-.linkcell{display:flex;align-items:center;gap:4px}
-.linkcell a{font-size:14px;padding:0 4px}
-/* Status and emotion pills */
-#tbody select.pill{border:0;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600;color:#fff;cursor:pointer;background:var(--gray)}
-#tbody select.pill.long{background:var(--green)}
-#tbody select.pill.short{background:var(--red)}
-#tbody select.pill.tp{background:var(--green)}
-#tbody select.pill.loss{background:var(--red)}
-#tbody select.pill.be{background:var(--gray)}
-#tbody select.pill.good{background:#14532d;color:#bbf7d0}
-#tbody select.pill.bad{background:#7f1d1d;color:#fecaca}
-#tbody select.pill.neutral{background:#2a2f3a;color:#cbd5e1}
-.actions{white-space:nowrap}
-.open-btn{opacity:0;background:#1f232d;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:3px 9px;font-size:11px;font-weight:600;letter-spacing:.04em;cursor:pointer;transition:opacity .15s}
-tbody tr:hover .open-btn{opacity:1}
-.open-btn:hover{border-color:var(--blue)}
-.add-row{display:block;width:100%;padding:14px;background:transparent;border:0;border-top:1px dashed #3b4252;color:var(--muted);font:inherit;font-size:14px;cursor:pointer}
-.add-row:hover{color:var(--text);background:#1a1e27}
-.empty{text-align:center;color:var(--muted);padding:30px}
-
-/* Side-peek drawer */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:55}
-.drawer{position:fixed;top:0;right:0;bottom:0;width:min(660px,100%);background:var(--panel);border-left:1px solid var(--line);z-index:60;display:flex;flex-direction:column;box-shadow:-10px 0 30px rgba(0,0,0,.4)}
-.drawer-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line)}
-.drawer-body{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px}
-.drawer-foot{display:flex;justify-content:space-between;gap:8px;padding:14px 20px;border-top:1px solid var(--line)}
-.row-right{display:flex;gap:8px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.fld{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
-.fld.full{grid-column:1/-1}
-.fld .row input,.fld .row select{flex:1;min-width:0}
-.sec{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:6px}
-.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-.thumb{position:relative;height:130px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#0b0d11}
-.thumb img{width:100%;height:100%;object-fit:contain;display:block;cursor:zoom-in}
-.thumb .kind{position:absolute;left:6px;bottom:6px;font-size:11px;padding:2px 7px;border-radius:6px;background:rgba(0,0,0,.75)}
-.thumb-rm{position:absolute;right:6px;top:6px;background:rgba(0,0,0,.75);border:0;color:#fff;border-radius:6px;padding:2px 7px;cursor:pointer}
-.error{color:#fca5a5;background:#450a0a;border:1px solid #7f1d1d;padding:8px 12px;border-radius:8px;font-size:13px}
-
-/* Lightbox */
-.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out}
-.lightbox img{max-width:95vw;max-height:92vh;object-fit:contain;border-radius:8px}
-
-@media (max-width:640px){
-  .grid2{grid-template-columns:1fr}
-  .charts{grid-template-columns:1fr;padding:12px}
-  .stats,.monthly,.toolbar{padding-left:12px;padding-right:12px}
-  .table-block{margin:0 12px 40px}
-  .rowcount{padding-left:12px}
-}
+  /* ---------- APP ---------- */
+  #app{padding:16px;max-width:1400px;margin:0 auto}
+  header{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;margin-bottom:14px}
+  header h1{font-size:22px;margin:0}
+  .hdr-right{display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:var(--mut);font-size:14px}
+  .hdr-right input{width:120px}
+  .admin-tag{color:var(--gold);font-size:12px;border:1px solid var(--gold);border-radius:6px;padding:2px 6px}
+  .ghost{background:transparent;color:var(--mut);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .stat .l{color:var(--mut);font-size:12px}
+  .stat .v{font-size:20px;font-weight:700;margin-top:4px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+  .panel h3{margin:0 0 10px;font-size:15px;color:var(--mut);font-weight:600}
+  #chart{width:100%;height:220px;display:block}
+  .scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:6px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+  th{color:var(--mut);font-weight:600;background:#101016;position:sticky;top:0}
+  td input,td select{width:100%;min-width:90px}
+  td.comment input{min-width:180px}
+  tr.green td:first-child{box-shadow:inset 3px 0 0 var(--g)}
+  tr.red td:first-child{box-shadow:inset 3px 0 0 var(--r)}
+  .bal{color:var(--gold);font-weight:600}
+  .pos{color:var(--g)} .neg{color:var(--r)}
+  .del{background:none;border:0;color:var(--r);cursor:pointer;font-size:16px}
+  .add{width:100%;padding:16px;border:1px dashed var(--gold);background:rgba(245,184,46,.06);
+    color:var(--gold);border-radius:14px;font-weight:700;font-size:16px;cursor:pointer;margin-top:4px}
+  .add:hover{background:rgba(245,184,46,.12)}
+  .empty{color:var(--mut);text-align:center;padding:24px 0}
 </style>
 </head>
 <body>
 
-<header class="topbar">
-  <h1>📈 Trading Jurnali</h1>
-  <div class="row wrap">
-    <button class="btn ghost" id="exportBtn">Ma'lumotlarni yuklab olish (JSON Backup)</button>
-    <label class="btn ghost" style="cursor:pointer">JSON Yuklash
-      <input type="file" id="importInput" accept="application/json,.json" hidden>
-    </label>
-  </div>
-</header>
-
-<section class="stats">
-  <div class="card"><div class="label">Jami savdo</div><div class="value" id="sTotal">0</div></div>
-  <div class="card"><div class="label">Win rate</div><div class="value" id="sWin">0%</div></div>
-  <div class="card"><div class="label">Umumiy foyda</div><div class="value" id="sProfit">$0</div></div>
-  <div class="card"><div class="label">O'rtacha R/R</div><div class="value" id="sRR">1:0</div></div>
-  <div class="card"><div class="label">TP / Loss / BU</div><div class="value" id="sBreak">0 / 0 / 0</div></div>
-</section>
-
-<section class="charts">
-  <div class="card">
-    <div class="card-head">
-      <div>
-        <h2>Equity Curve</h2>
-        <div class="muted small" id="eqSummary"></div>
-      </div>
-      <div class="chart-controls">
-        <label>Boshlang'ich ($)
-          <input class="narrow" type="number" id="startBal" step="0.01">
-        </label>
-        <select id="period"></select>
-      </div>
-    </div>
-    <div class="chart-box"><canvas id="eqChart"></canvas></div>
-    <div class="chart-warn" id="chartWarn" hidden>Grafik yuklanmadi. Internet ulanishini tekshiring va sahifani yangilang.</div>
+<!-- ============ PAYWALL (default for new visitors) ============ -->
+<section id="paywall" class="hidden">
+  <div class="preview" aria-hidden="true">
+    <div class="pv-card"></div>
+    <div class="pv-card"></div>
+    <div class="pv-chart"></div>
+    <div class="pv-card"></div>
+    <div class="pv-card"></div>
   </div>
 
-  <div class="card">
-    <div class="card-head">
-      <div>
-        <h2>Hissiyot chizig'i</h2>
-        <div class="muted small">Yaxshi hissiyot +1, yomon hissiyot -1 (to'planadi)</div>
-      </div>
+  <div class="pw-card">
+    <span class="badge">🔒 Cheklangan kirish</span>
+    <h1>Trading Jurnali</h1>
+    <p class="sub">Savdolaringizni intizom bilan boshqaring va natijangizni aniq ko'ring.</p>
+
+    <ul class="features">
+      <li>📈 Hissiyot liniyasi</li>
+      <li>📊 Oylik foizli statistika</li>
+      <li>♾️ Cheksiz savdo jadvali</li>
+    </ul>
+
+    <div class="price">$50 — Umrbod Kirish <small>(Lifetime Access)</small></div>
+
+    <a id="btnCard" class="btn btn-card" href="#">💳 Karta orqali to'lash ($50)</a>
+    <a id="btnCrypto" class="btn btn-crypto" href="#">🪙 Kripto (USDT) orqali to'lash ($50)</a>
+
+    <div class="divider"></div>
+
+    <label for="keyInput">To'lov qilganmisiz? Kalit kodni kiriting</label>
+    <div class="keyrow">
+      <input id="keyInput" placeholder="ALIMOV50-XXXXXX" autocomplete="off" spellcheck="false">
+      <button id="keyBtn">Kirish</button>
     </div>
-    <div class="chart-box"><canvas id="emoChart"></canvas></div>
+    <p id="pwMsg" class="msg"></p>
   </div>
 </section>
 
-<section class="monthly" id="monthly"></section>
+<!-- ============ TRADING JOURNAL (unlocked) ============ -->
+<section id="app" class="hidden">
+  <header>
+    <div style="display:flex;align-items:center;gap:10px">
+      <h1>📒 Trading Jurnali</h1>
+      <span id="adminTag" class="admin-tag hidden">ADMIN</span>
+    </div>
+    <div class="hdr-right">
+      <label>Boshlang'ich balans ($):
+        <input id="startBal" type="number" step="any" min="0">
+      </label>
+      <button id="logoutBtn" class="ghost">Chiqish</button>
+    </div>
+  </header>
 
-<div class="toolbar">
-  <input class="search" id="search" placeholder="Juftlik, izoh yoki hissiyot bo'yicha qidirish...">
-  <select id="fPos">
-    <option value="">Pozitsiya: hammasi</option>
-    <option>Long</option><option>Short</option>
-  </select>
-  <select id="fRes">
-    <option value="">Natija: hammasi</option>
-    <option>Take Profit</option><option>Loss</option><option>BU</option>
-  </select>
-  <select id="fArg">
-    <option value="">Argument: hammasi</option>
-    <option>SMC</option><option>Order block</option><option>Order flow</option><option>Discount</option><option>Boshqa</option>
-  </select>
-  <select id="fMood">
-    <option value="">Hissiyot: hammasi</option>
-    <option value="Yaxshi">Yaxshi</option>
-    <option value="Yomon">Yomon</option>
-  </select>
-  <select id="fSort">
-    <option value="default">Saralash: qo'shilish tartibi</option>
-    <option value="date-asc">Sana: eski → yangi</option>
-    <option value="date-desc">Sana: yangi → eski</option>
-    <option value="profit-desc">Foyda: katta → kichik</option>
-    <option value="profit-asc">Foyda: kichik → katta</option>
-  </select>
-  <button class="btn ghost small" id="resetFilters">Tozalash</button>
-  <div class="dropdown-wrap">
-    <button class="btn ghost" id="propsBtn">Ustunlar (Properties) ▾</button>
-    <div class="dropdown" id="props" hidden></div>
+  <div class="stats">
+    <div class="stat"><div class="l">Jami savdo</div><div class="v" id="sTotal">0</div></div>
+    <div class="stat"><div class="l">G'alaba (Winrate)</div><div class="v" id="sWin">0%</div></div>
+    <div class="stat"><div class="l">Jami foyda ($)</div><div class="v" id="sProfit">0</div></div>
+    <div class="stat"><div class="l">Joriy balans ($)</div><div class="v" id="sBal">0</div></div>
+    <div class="stat"><div class="l">Umumiy o'sish</div><div class="v" id="sRet">0%</div></div>
   </div>
-</div>
-<div class="rowcount" id="rowCount"></div>
 
-<div class="table-block">
-  <div class="table-wrap">
-    <table>
-      <thead id="thead"></thead>
-      <tbody id="tbody"></tbody>
-    </table>
-    <div class="empty" id="empty" hidden>Savdolar topilmadi.</div>
+  <div class="panel">
+    <h3>Balans va hissiyot liniyasi (🟢 yaxshi · 🔴 yomon · ⚪ neytral)</h3>
+    <canvas id="chart"></canvas>
   </div>
-  <button class="add-row" id="addBtn">+ Yangi savdo qo'shish</button>
-</div>
 
-<!-- Side-peek drawer -->
-<div class="overlay" id="overlay" hidden></div>
-<aside class="drawer" id="drawer" hidden>
-  <div class="drawer-head">
-    <h2 id="drawerTitle">Savdo</h2>
-    <button class="icon" id="dClose" aria-label="Yopish">✕</button>
-  </div>
-  <div class="drawer-body">
-    <div class="grid2">
-      <label class="fld">Sana <input type="date" id="d_date"></label>
-      <label class="fld">Juftlik <input type="text" id="d_pair" placeholder="BTCUSDT"></label>
-      <label class="fld">Pozitsiya
-        <select id="d_position"><option>Long</option><option>Short</option></select>
-      </label>
-      <label class="fld">Argument
-        <select id="d_argument">
-          <option>SMC</option><option>Order block</option><option>Order flow</option><option>Discount</option><option>Boshqa</option>
-        </select>
-      </label>
-      <label class="fld">Kirish narxi <input type="number" step="any" id="d_entry"></label>
-      <label class="fld">Chiqish narxi <input type="number" step="any" id="d_exit"></label>
-      <label class="fld">Risk % <input type="number" step="0.1" min="0" id="d_risk"></label>
-      <label class="fld">R/R (1:x) <input type="number" step="0.1" min="0" id="d_rr"></label>
-      <label class="fld">Foyda ($) <input type="number" step="0.01" id="d_profit"></label>
-      <label class="fld">Natija
-        <select id="d_result"><option>Take Profit</option><option>Loss</option><option>BU</option></select>
-      </label>
-      <div class="fld full">Hissiyot
-        <div class="row">
-          <select id="d_emotion"></select>
-          <input type="text" id="dCustom" placeholder="Yangi hissiyot...">
-          <button type="button" class="btn ghost small" id="dCustomBtn">Qo'shish</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="sec">TradingView linklari</div>
-    <div class="fld full">Kirish linki (Before)
-      <div class="row">
-        <input type="url" id="d_before" class="fill" placeholder="https://www.tradingview.com/...">
-        <button type="button" class="btn ghost small" id="dBeforeOpen">↗ Ochish</button>
-      </div>
-    </div>
-    <div class="fld full">Chiqish linki (After)
-      <div class="row">
-        <input type="url" id="d_after" class="fill" placeholder="https://www.tradingview.com/...">
-        <button type="button" class="btn ghost small" id="dAfterOpen">↗ Ochish</button>
-      </div>
-    </div>
-
-    <div class="sec">Skrinshotlar</div>
-    <div class="row wrap">
-      <label class="btn ghost small">📷 Before rasm
-        <input type="file" id="dBeforeFile" accept="image/*" multiple hidden>
-      </label>
-      <label class="btn ghost small">📷 After rasm
-        <input type="file" id="dAfterFile" accept="image/*" multiple hidden>
-      </label>
-    </div>
-    <div class="gallery" id="dGallery"></div>
-
-    <div class="fld full">Izoh
-      <textarea id="d_comment" placeholder="Savdo haqida batafsil fikrlar..."></textarea>
+  <div class="panel">
+    <h3>Oylik foizli statistika</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Oy</th><th>Savdolar</th><th>G'alaba %</th><th>Foyda ($)</th><th>Foiz (pribl %)</th></tr></thead>
+        <tbody id="monthly"></tbody>
+      </table>
     </div>
   </div>
-  <div class="drawer-foot">
-    <button class="btn danger" id="dDelete">O'chirish</button>
-    <div class="row-right">
-      <button class="btn ghost" id="dCancel">Bekor qilish</button>
-      <button class="btn" id="dSave">Saqlash</button>
+
+  <div class="panel">
+    <h3>Savdolar jadvali</h3>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Date time</th><th>para</th><th>pozitsiya</th><th>before</th><th>after</th>
+            <th>argument</th><th>Risk%</th><th>R/R</th><th>Foyda ($)</th><th>pribl (%)</th>
+            <th>Balans ($)</th><th>Hissiyot</th><th>comment</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="journal"></tbody>
+      </table>
+      <p id="emptyMsg" class="empty">Hali savdo yo'q. Pastdagi tugmani bosing.</p>
     </div>
   </div>
-</aside>
 
-<!-- Lightbox -->
-<div class="lightbox" id="lb" hidden><img id="lbImg" alt="Skrinshot"></div>
+  <button id="addBtn" class="add">+ Yangi savdo qo'shish</button>
+</section>
 
 <script>
-/* ===================== CONSTANTS ===================== */
-const COLUMNS = [
-  ['date', 'Sana'], ['pair', 'Juftlik'], ['position', 'Pozitsiya'], ['entry', 'Kirish narx'],
-  ['exit', 'Chiqish narx'], ['before', 'Kirish link'], ['after', 'Chiqish link'], ['argument', 'Argument'],
-  ['risk', 'Risk %'], ['rr', 'R/R'], ['profit', 'Foyda'], ['result', 'Natija'],
-  ['emotion', 'Hissiyot'], ['comment', 'Izoh'],
-];
-const POSITIONS = ['Long', 'Short'];
-const RESULTS = ['Take Profit', 'Loss', 'BU'];
-const ARGUMENTS = ['SMC', 'Order block', 'Order flow', 'Discount', 'Boshqa'];
-const BASE_EMOTIONS = ['Xotirjam', 'Hursan', "Reja bo'yicha", 'Shoshildim', 'FOMO', 'Asabiy', "Qo'rquv"];
-const GOOD_EMOTIONS = ['Xotirjam', 'Hursan', "Reja bo'yicha"];
-const BAD_EMOTIONS = ['Shoshildim', 'FOMO', 'Asabiy', "Qo'rquv"];
-const MONTHS_UZ = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'];
-const GREEN = '#22c55e', RED = '#ef4444', GRAY = '#64748b', MUTED = '#8a90a0';
-const DRAWER_FIELDS = ['date', 'pair', 'position', 'argument', 'entry', 'exit', 'risk', 'rr', 'profit', 'result', 'emotion', 'before', 'after', 'comment'];
-const KEY_SETTINGS = 'trading-journal-settings';
-const DB_NAME = 'trading-journal-db';
-const TRADES_KEY = 'trades';
+/* =====================================================================
+   CONFIG — EDIT ONLY THIS BLOCK
+   ===================================================================== */
+const CONFIG = {
+  // 💳 Paste your card checkout link here (Lemon Squeezy / Gumroad / Stripe)
+  CARD_PAYMENT_URL:   "https://YOUR-STORE.lemonsqueezy.com/checkout/buy/YOUR-VARIANT-ID",
 
-/* ===================== DEMO DATA (8 trades, 2 months) ===================== */
-const S = (id, date, pair, argument, rr, profit, result, emotion, comment, entry, exit) => ({
-  id, date, pair, position: 'Long', argument, entry, exit, risk: 1, rr, profit, result,
-  emotion, before: '', after: '', comment, shots: [],
-});
-const SAMPLE = [
-  S('demo-1', '2025-08-26', 'STCUSDT', 'SMC', 1.3, -10, 'Loss', 'Shoshildim', '', 0.182, 0.178),
-  S('demo-2', '2025-08-29', 'GRAMUSDT', 'Order block', 1.3, 30, 'Take Profit', 'Xotirjam', 'narmal', 0.512, 0.545),
-  S('demo-3', '2025-09-01', 'SOLANAUSDT', 'SMC', 1.3, -10, 'Loss', 'Asabiy', 'hissiyot', 182.4, 179.1),
-  S('demo-4', '2025-09-08', 'BTCUSDT', 'Order block', 1.3, 0, 'BU', "Reja bo'yicha", "4soatlik tahlil, BU ga o'tkazildi", 96400, 96400),
-  S('demo-5', '2025-09-18', 'ZECUSDT', 'Order flow', 1.3, -10, 'Loss', 'FOMO', 'kayfiyat', 38.2, 37.4),
-  S('demo-6', '2025-09-20', 'BNBUSDT', 'Order block', 1.3, 0, 'BU', 'Xotirjam', 'hissiyot yaxshi', 610, 610),
-  S('demo-7', '2025-09-21', 'HYPEUSDT', 'Order flow', 1.3, -10, 'Loss', "Qo'rquv", '', 24.8, 24.1),
-  S('demo-8', '2025-09-24', 'SOLANAUSDT', 'SMC', 1.8, 34, 'Take Profit', 'Hursan', "4soatlik kirish, reja to'g'ri ishladi", 184.2, 190.5),
-];
+  // 🪙 Paste your crypto checkout link here (Cryptomus / NOWPayments)
+  CRYPTO_PAYMENT_URL: "https://nowpayments.io/payment/?iid=YOUR-INVOICE-ID",
 
-/* ===================== STATE ===================== */
-let trades = [];
-let settings = { startBal: 1000, period: 'all', visible: COLUMNS.map(c => c[0]) };
-let filters = { search: '', pos: '', res: '', arg: '', mood: '', sort: 'default' };
-let drawer = { id: null, draft: null };
-let eqChart = null, emoChart = null;
+  // 🔑 Local license keys (works on ONE browser only; see VERIFY_URL for real protection)
+  VALID_KEYS: ["ALIMOV50-1A2B3C", "ALIMOV50-4D5E6F"],
 
-/* ===================== HELPERS ===================== */
-const $ = (s) => document.querySelector(s);
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const fmt = (n) => (n < 0 ? '-$' : '$') + Math.abs(n).toFixed(2);
-const round2 = (n) => Math.round(n * 100) / 100;
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-const thisMonth = () => todayStr().slice(0, 7);
-function todayStr() {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 10);
-}
-const monthName = (key) => `${MONTHS_UZ[Number(key.slice(5, 7)) - 1]} ${key.slice(0, 4)}`;
-const emotionScore = (e) => (GOOD_EMOTIONS.includes(e) ? 1 : BAD_EMOTIONS.includes(e) ? -1 : 0);
-const toneCls = (e) => (e === '' ? 'neutral' : emotionScore(e) > 0 ? 'good' : emotionScore(e) < 0 ? 'bad' : 'neutral');
-const resultCls = (r) => (r === 'Take Profit' ? 'tp' : r === 'Loss' ? 'loss' : 'be');
-const isHttp = (u) => /^https?:\/\//i.test(String(u || '').trim());
-const sortedByDate = () => trades.slice().sort((a, b) => a.date.localeCompare(b.date));
+  // ☁️ Optional: Cloudflare Worker / Supabase endpoint for real multi-device checks.
+  //    Leave "" to use local-only mode.
+  VERIFY_URL: "",
 
-function blankTrade() {
-  return {
-    id: uid(), date: todayStr(), pair: '', position: 'Long', argument: 'SMC', entry: null, exit: null,
-    risk: 1, rr: 1.3, profit: 0, result: 'Take Profit', emotion: '', before: '', after: '', comment: '', shots: [],
-  };
-}
+  // 📱 Max devices per key
+  MAX_DEVICES: 1,
 
-function normalize(r) {
-  const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
-  const numOrNull = (v) => (v === '' || v === null || v === undefined || !Number.isFinite(Number(v)) ? null : Number(v));
-  let shots = [];
-  if (Array.isArray(r.shots)) {
-    shots = r.shots.filter((s) => s && s.src).map((s) => ({ id: s.id || uid(), kind: s.kind === 'after' ? 'after' : 'before', src: String(s.src) }));
-  } else {
-    if (r.beforeImg) shots.push({ id: uid(), kind: 'before', src: String(r.beforeImg) });
-    if (r.afterImg) shots.push({ id: uid(), kind: 'after', src: String(r.afterImg) });
+  // 👑 Secret owner shortcut: open  https://yoursite.com/?admin=alimov_owner
+  ADMIN_SECRET: "alimov_owner"
+};
+/* ===================================================================== */
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+const MSG = {
+  invalid: "Kalit noto'g'ri yoki muddati tugagan.",
+  device:  "Ushbu kirish huquqi faqat bitta qurilma uchun faollashtirilgan.",
+  network: "Server bilan bog'lanib bo'lmadi. Qayta urinib ko'ring."
+};
+
+/* ---------- DEVICE FINGERPRINT ---------- */
+function getDeviceId() {
+  let d = localStorage.getItem("tj_device");
+  if (!d) {
+    d = (crypto.randomUUID ? crypto.randomUUID()
+        : Date.now() + "-" + Math.random().toString(36).slice(2));
+    localStorage.setItem("tj_device", d);
   }
-  return {
-    id: String(r.id ?? uid()),
-    date: String(r.date || ''),
-    pair: String(r.pair || '').trim().toUpperCase(),
-    position: r.position === 'Short' ? 'Short' : 'Long',
-    argument: ARGUMENTS.includes(r.argument) ? r.argument : 'Boshqa',
-    entry: numOrNull(r.entry),
-    exit: numOrNull(r.exit),
-    risk: num(r.risk),
-    rr: num(r.rr),
-    profit: num(r.profit),
-    result: RESULTS.includes(r.result) ? r.result : 'BU',
-    emotion: String(r.emotion || ''),
-    before: String(r.before || ''),
-    after: String(r.after || ''),
-    comment: String(r.comment || ''),
-    shots,
-  };
+  return d;
 }
 
-/* ===================== STORAGE (IndexedDB, localStorage fallback) ===================== */
-let dbPromise = null;
-function openDB() {
-  if (!dbPromise) {
-    dbPromise = new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, 1);
-      req.onupgradeneeded = () => req.result.createObjectStore('kv');
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
-  return dbPromise;
-}
-async function idbGet(key) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const req = db.transaction('kv').objectStore('kv').get(key);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-async function idbSet(key, value) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('kv', 'readwrite');
-    tx.objectStore('kv').put(value, key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-    tx.onabort = () => reject(tx.error);
-  });
-}
-async function loadTrades() {
-  let data = null;
-  try { data = await idbGet(TRADES_KEY); } catch { data = null; }
-  if (!Array.isArray(data)) {
-    try { data = JSON.parse(localStorage.getItem('trading-journal-fallback') || 'null'); } catch { data = null; }
-  }
-  if (!Array.isArray(data)) {
-    try { data = JSON.parse(localStorage.getItem('trading-journal-v1') || 'null'); } catch { data = null; }
-  }
-  return Array.isArray(data) ? data.map(normalize) : null;
-}
-async function persist() {
-  try {
-    await idbSet(TRADES_KEY, trades);
-  } catch {
+/* ---------- LICENSE CHECK ---------- */
+async function checkKey(key) {
+  if (CONFIG.VERIFY_URL) {
     try {
-      localStorage.setItem('trading-journal-fallback', JSON.stringify(trades));
-    } catch {
-      alert("Xotira to'ldi. Skrinshotlarni kamaytiring yoki JSON backup yuklab oling.");
-    }
+      const r = await fetch(CONFIG.VERIFY_URL, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({key, device: getDeviceId()})
+      });
+      const j = await r.json();
+      return {ok: !!j.valid, reason: j.reason || "invalid"};
+    } catch { return {ok: false, reason: "network"}; }
   }
-}
-function loadSettings() {
-  try {
-    const s = JSON.parse(localStorage.getItem(KEY_SETTINGS) || '{}');
-    if (typeof s.startBal === 'number') settings.startBal = s.startBal;
-    if (typeof s.period === 'string') settings.period = s.period;
-    if (Array.isArray(s.visible)) settings.visible = s.visible.filter((k) => COLUMNS.some((c) => c[0] === k));
-  } catch { /* ignore */ }
-}
-function saveSettings() {
-  try { localStorage.setItem(KEY_SETTINGS, JSON.stringify(settings)); } catch { /* ignore */ }
-}
-
-/* ===================== DATA CALCULATIONS ===================== */
-function computeStats(list) {
-  const count = list.length;
-  const wins = list.filter((t) => t.result === 'Take Profit').length;
-  const losses = list.filter((t) => t.result === 'Loss').length;
-  const bu = list.filter((t) => t.result === 'BU').length;
-  const total = list.reduce((s, t) => s + t.profit, 0);
-  const avgRR = count ? list.reduce((s, t) => s + t.rr, 0) / count : 0;
-  const decided = wins + losses;
-  return { count, wins, losses, bu, total: round2(total), avgRR, winRate: decided ? Math.round((wins / decided) * 100) : 0 };
-}
-
-function equityData() {
-  const sorted = sortedByDate();
-  const p = settings.period;
-  const inPeriod = (t) => (p === 'all' ? true : p === 'thismonth' ? t.date.startsWith(thisMonth()) : t.date.startsWith(p));
-  const list = sorted.filter(inPeriod);
-  const first = list.length ? sorted.indexOf(list[0]) : sorted.length;
-  let base = settings.startBal;
-  for (let i = 0; i < first; i++) base += sorted[i].profit;
-
-  const labels = [p === 'all' ? 'Boshlanish' : 'Davr boshi'];
-  const values = [round2(base)];
-  const deltas = [0];
-  let bal = base;
-  for (const t of list) {
-    bal += t.profit;
-    labels.push(`${t.date} ${t.pair}`);
-    values.push(round2(bal));
-    deltas.push(t.profit);
+  // Local fallback
+  if (!CONFIG.VALID_KEYS.includes(key)) return {ok: false, reason: "invalid"};
+  const bindings = JSON.parse(localStorage.getItem("tj_bindings") || "{}");
+  const dev = getDeviceId();
+  const list = bindings[key] || [];
+  if (!list.includes(dev)) {
+    if (list.length >= CONFIG.MAX_DEVICES) return {ok: false, reason: "device"};
+    list.push(dev);
   }
-  return { labels, values, deltas, result: round2(bal - base), final: round2(bal), count: list.length };
+  bindings[key] = list;
+  localStorage.setItem("tj_bindings", JSON.stringify(bindings));
+  return {ok: true};
 }
 
-function emotionData() {
-  let score = 0;
-  const labels = ['Boshlanish'];
-  const values = [0];
-  const deltas = [0];
-  for (const t of sortedByDate()) {
-    const d = emotionScore(t.emotion);
-    score += d;
-    labels.push(`${t.date} ${t.pair}`);
-    values.push(score);
-    deltas.push(d);
+async function activate(key) {
+  setMsg("");
+  const r = await checkKey(key);
+  if (!r.ok) { setMsg(MSG[r.reason] || MSG.invalid); return false; }
+  localStorage.setItem("tj_license", key);
+  showApp();
+  return true;
+}
+
+function setMsg(t, ok = false) {
+  const el = $("#pwMsg");
+  el.textContent = t;
+  el.className = "msg" + (ok ? " ok" : "");
+}
+
+/* ---------- SCREENS ---------- */
+function showPaywall() {
+  $("#paywall").classList.remove("hidden");
+  $("#app").classList.add("hidden");
+  $("#btnCard").href = CONFIG.CARD_PAYMENT_URL;
+  $("#btnCrypto").href = CONFIG.CRYPTO_PAYMENT_URL;
+}
+function showApp() {
+  $("#paywall").classList.add("hidden");
+  $("#app").classList.remove("hidden");
+  if (localStorage.getItem("tj_admin") === "1") $("#adminTag").classList.remove("hidden");
+  renderAll();
+}
+
+/* ---------- BOOT: auto-unlock on redirect ---------- */
+async function boot() {
+  const p = new URLSearchParams(location.search);
+
+  // Admin shortcut
+  if (p.get("admin") === CONFIG.ADMIN_SECRET) {
+    localStorage.setItem("tj_admin", "1");
+    history.replaceState({}, "", location.pathname);
+    return showApp();
   }
-  return { labels, values, deltas };
-}
-
-function monthlyData() {
-  const groups = new Map();
-  for (const t of sortedByDate()) {
-    const k = t.date.slice(0, 7);
-    if (!groups.has(k)) groups.set(k, []);
-    groups.get(k).push(t);
+  if (p.get("admin") === "logout") {
+    localStorage.removeItem("tj_admin");
+    history.replaceState({}, "", location.pathname);
   }
-  let bal = settings.startBal;
-  const out = [];
-  for (const [key, list] of groups) {
-    const start = bal;
-    const profit = list.reduce((s, t) => s + t.profit, 0);
-    bal += profit;
-    const wins = list.filter((t) => t.result === 'Take Profit').length;
-    const losses = list.filter((t) => t.result === 'Loss').length;
-    const decided = wins + losses;
-    out.push({
-      key,
-      count: list.length,
-      profit: round2(profit),
-      pct: start > 0 ? (profit / start) * 100 : null,
-      winRate: decided ? Math.round((wins / decided) * 100) : 0,
-    });
+
+  // Payment redirect: ?access=granted&key=...  or  ?token=...
+  const redirectKey = (p.get("key") || p.get("token") || "").trim();
+  if (redirectKey) {
+    history.replaceState({}, "", location.pathname);   // clean the URL
+    if (await activate(redirectKey)) return;
+  } else if (p.get("payment") === "success" || p.get("access") === "granted") {
+    history.replaceState({}, "", location.pathname);
+    showPaywall();
+    setMsg("To'lov qabul qilindi! Kalit kodingizni quyida kiriting.", true);
+    return;
   }
-  return out;
+
+  if (localStorage.getItem("tj_admin") === "1") return showApp();
+
+  // Returning buyer
+  const cached = localStorage.getItem("tj_license");
+  if (cached) {
+    const r = await checkKey(cached);
+    if (r.ok || r.reason === "network") return showApp();   // offline-friendly
+    localStorage.removeItem("tj_license");
+    setMsg(MSG[r.reason] || MSG.invalid);
+  }
+  showPaywall();
 }
 
-function visibleTrades() {
-  const q = filters.search.trim().toLowerCase();
-  const list = trades.filter(
-    (t) =>
-      (!q || `${t.pair} ${t.comment} ${t.emotion}`.toLowerCase().includes(q)) &&
-      (!filters.pos || t.position === filters.pos) &&
-      (!filters.res || t.result === filters.res) &&
-      (!filters.arg || t.argument === filters.arg) &&
-      (!filters.mood || (filters.mood === 'Yaxshi' ? emotionScore(t.emotion) > 0 : emotionScore(t.emotion) < 0)),
-  );
-  if (filters.sort === 'date-asc') list.sort((a, b) => a.date.localeCompare(b.date));
-  else if (filters.sort === 'date-desc') list.sort((a, b) => b.date.localeCompare(a.date));
-  else if (filters.sort === 'profit-desc') list.sort((a, b) => b.profit - a.profit);
-  else if (filters.sort === 'profit-asc') list.sort((a, b) => a.profit - b.profit);
-  return list;
+$("#keyBtn").onclick = () => activate($("#keyInput").value.trim());
+$("#keyInput").addEventListener("keydown", e => { if (e.key === "Enter") $("#keyBtn").click(); });
+$("#logoutBtn").onclick = () => { localStorage.removeItem("tj_license"); location.reload(); };
+
+/* ================================================================
+   TRADING JOURNAL
+   ================================================================ */
+let trades = JSON.parse(localStorage.getItem("tj_trades") || "[]");
+const saveTrades = () => localStorage.setItem("tj_trades", JSON.stringify(trades));
+
+function newTrade() {
+  const n = new Date(), p = v => String(v).padStart(2, "0");
+  return {
+    id: String(Date.now()) + Math.random().toString(36).slice(2, 6),
+    dt: `${n.getFullYear()}-${p(n.getMonth()+1)}-${p(n.getDate())}T${p(n.getHours())}:${p(n.getMinutes())}`,
+    para: "", pozitsiya: "Long", before: "", after: "", argument: "",
+    risk: "", rr: "", foyda: "", pribl: "", hissiyot: "green", comment: ""
+  };
 }
 
-/* ===================== RENDERING ===================== */
-function renderAll() {
-  renderStats();
-  renderMonthly();
-  renderPeriodOptions();
-  renderCharts();
-  renderTable();
-}
+const TEXT_COLS = [
+  ["dt","datetime-local"],["para","text"],["pozitsiya","text"],["before","url"],
+  ["after","url"],["argument","text"],["risk","number"],["rr","text"],
+  ["foyda","number"],["pribl","number"]
+];
 
-function refreshSummary() {
-  renderStats();
-  renderMonthly();
-  renderPeriodOptions();
-  renderCharts();
+function renderTable() {
+  const tb = $("#journal");
+  $("#emptyMsg").classList.toggle("hidden", trades.length > 0);
+  tb.innerHTML = trades.map(t => {
+    const cells = TEXT_COLS.map(([f, type]) =>
+      `<td><input data-id="${t.id}" data-f="${f}" type="${type}" value="${esc(t[f])}"${type==="number"?' step="any"':''}></td>`
+    ).join("");
+    return `<tr class="${t.hissiyot}">
+      ${cells}
+      <td><span class="bal" data-bal="${t.id}"></span></td>
+      <td><select data-id="${t.id}" data-f="hissiyot">
+        <option value="green"${t.hissiyot==="green"?" selected":""}>🟢 Yaxshi</option>
+        <option value="red"${t.hissiyot==="red"?" selected":""}>🔴 Yomon</option>
+        <option value="neutral"${t.hissiyot==="neutral"?" selected":""}>⚪ Neytral</option>
+      </select></td>
+      <td class="comment"><input data-id="${t.id}" data-f="comment" type="text" value="${esc(t.comment)}"></td>
+      <td><button class="del" data-del="${t.id}" title="O'chirish">✕</button></td>
+    </tr>`;
+  }).join("");
 }
 
 function renderStats() {
-  const s = computeStats(trades);
-  $('#sTotal').textContent = s.count;
-  $('#sWin').textContent = s.winRate + '%';
-  const p = $('#sProfit');
-  p.textContent = fmt(s.total);
-  p.className = 'value ' + (s.total >= 0 ? 'pos' : 'neg');
-  $('#sRR').textContent = '1:' + s.avgRR.toFixed(2);
-  $('#sBreak').textContent = `${s.wins} / ${s.losses} / ${s.bu}`;
+  const start = parseFloat($("#startBal").value) || 0;
+  let bal = start, wins = 0, counted = 0, profit = 0;
+  const pts = [{b: start, h: "neutral"}];
+
+  trades.forEach(t => {
+    const f = parseFloat(t.foyda);
+    if (!isNaN(f)) { bal += f; profit += f; counted++; if (f > 0) wins++; }
+    pts.push({b: bal, h: t.hissiyot});
+    const cell = document.querySelector(`[data-bal="${t.id}"]`);
+    if (cell) {
+      cell.textContent = bal.toFixed(2);
+    }
+  });
+
+  $("#sTotal").textContent = trades.length;
+  $("#sWin").textContent = (counted ? (wins / counted * 100).toFixed(1) : "0") + "%";
+  $("#sProfit").textContent = profit.toFixed(2);
+  $("#sProfit").className = "v " + (profit >= 0 ? "pos" : "neg");
+  $("#sBal").textContent = bal.toFixed(2);
+  const ret = start ? (bal - start) / start * 100 : 0;
+  $("#sRet").textContent = ret.toFixed(2) + "%";
+  $("#sRet").className = "v " + (ret >= 0 ? "pos" : "neg");
+
+  // Monthly report
+  const m = {};
+  trades.forEach(t => {
+    const k = (t.dt || "").slice(0, 7) || "—";
+    m[k] ??= {n: 0, w: 0, c: 0, p: 0, f: 0};
+    const f = parseFloat(t.foyda), pr = parseFloat(t.pribl);
+    m[k].n++;
+    if (!isNaN(f)) { m[k].c++; m[k].f += f; if (f > 0) m[k].w++; }
+    if (!isNaN(pr)) m[k].p += pr;
+  });
+  $("#monthly").innerHTML = Object.keys(m).sort().reverse().map(k => {
+    const r = m[k];
+    const wr = r.c ? (r.w / r.c * 100).toFixed(1) : "0.0";
+    return `<tr>
+      <td>${k}</td><td>${r.n}</td><td>${wr}%</td>
+      <td class="${r.f>=0?'pos':'neg'}">${r.f.toFixed(2)}</td>
+      <td class="${r.p>=0?'pos':'neg'}">${r.p.toFixed(2)}%</td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="5" class="empty">Ma'lumot yo'q</td></tr>`;
+
+  drawChart(pts);
 }
 
-function renderMonthly() {
-  const box = $('#monthly');
-  const list = monthlyData().slice().reverse();
-  if (!list.length) {
-    box.innerHTML = '<div class="muted small">Savdolar yo\'q</div>';
+function drawChart(pts) {
+  const c = $("#chart"), dpr = window.devicePixelRatio || 1;
+  const w = c.clientWidth, h = 220;
+  c.width = w * dpr; c.height = h * dpr;
+  const x = c.getContext("2d");
+  x.setTransform(dpr, 0, 0, dpr, 0, 0);
+  x.clearRect(0, 0, w, h);
+
+  if (pts.length < 2) {
+    x.fillStyle = "#8A8A99"; x.font = "14px system-ui";
+    x.fillText("Savdo qo'shing — balans grafigi shu yerda chiziladi", 16, h / 2);
     return;
   }
-  box.innerHTML = list
-    .map((m) => {
-      const cls = m.pct === null ? '' : m.pct >= 0 ? 'pos' : 'neg';
-      const pct = m.pct === null ? '—' : `${m.pct >= 0 ? '+' : ''}${m.pct.toFixed(2)}%`;
-      return `<button class="mcard ${settings.period === m.key ? 'active' : ''}" data-month="${m.key}">
-        <div class="mtitle">${esc(monthName(m.key))}</div>
-        <div class="mpct ${cls}">${pct}</div>
-        <div class="msub">${fmt(m.profit)} · ${m.count} savdo · Win ${m.winRate}%</div>
-      </button>`;
-    })
-    .join('');
+  const P = 28;
+  let min = Math.min(...pts.map(p => p.b)), max = Math.max(...pts.map(p => p.b));
+  if (min === max) { min -= 1; max += 1; }
+  const X = i => P + i * (w - 2 * P) / (pts.length - 1);
+  const Y = v => h - P - (v - min) / (max - min) * (h - 2 * P);
+
+  // axes
+  x.strokeStyle = "#26262F"; x.beginPath();
+  x.moveTo(P, P); x.lineTo(P, h - P); x.lineTo(w - P, h - P); x.stroke();
+
+  // balance line
+  x.strokeStyle = "#F5B82E"; x.lineWidth = 2; x.beginPath();
+  pts.forEach((p, i) => i ? x.lineTo(X(i), Y(p.b)) : x.moveTo(X(i), Y(p.b)));
+  x.stroke();
+
+  // emotion dots: green / red / neutral
+  pts.forEach((p, i) => {
+    x.fillStyle = p.h === "green" ? "#22C55E" : p.h === "red" ? "#EF4444" : "#8A8A99";
+    x.beginPath(); x.arc(X(i), Y(p.b), 4.5, 0, Math.PI * 2); x.fill();
+  });
+
+  x.fillStyle = "#8A8A99"; x.font = "11px system-ui";
+  x.fillText(max.toFixed(0), 4, P + 4);
+  x.fillText(min.toFixed(0), 4, h - P);
 }
 
-function renderPeriodOptions() {
-  const sel = $('#period');
-  const months = monthlyData().map((m) => m.key).reverse();
-  sel.innerHTML =
-    '<option value="all">Barcha vaqt</option><option value="thismonth">Shu oy</option>' +
-    months.map((k) => `<option value="${k}">${esc(monthName(k))}</option>`).join('');
-  if (!['all', 'thismonth', ...months].includes(settings.period)) settings.period = 'all';
-  sel.value = settings.period;
-}
-
-function renderCharts() {
-  const eq = equityData();
-  if (eqChart) {
-    eqChart.data.labels = eq.labels;
-    eqChart.data.datasets[0].data = eq.values;
-    eqChart.data.datasets[0].pointBackgroundColor = eq.deltas.map((d) => (d > 0 ? GREEN : d < 0 ? RED : MUTED));
-    eqChart.update();
-  }
-  $('#eqSummary').innerHTML =
-    `${eq.count} ta savdo · Davr natijasi: <span class="${eq.result >= 0 ? 'pos' : 'neg'}">${fmt(eq.result)}</span> · Yakuniy balans: ${fmt(eq.final)}`;
-
-  const em = emotionData();
-  if (emoChart) {
-    emoChart.data.labels = em.labels;
-    emoChart.data.datasets[0].data = em.values;
-    emoChart.data.datasets[0].pointBackgroundColor = em.deltas.map((d) => (d > 0 ? GREEN : d < 0 ? RED : MUTED));
-    emoChart.update();
-  }
-}
-
-function allEmotions(extra) {
-  return [...new Set([...BASE_EMOTIONS, ...trades.map((t) => t.emotion).filter(Boolean), ...(extra ? [extra] : [])])];
-}
-
-function opts(list, selected) {
-  return list.map((o) => `<option value="${esc(o)}" ${o === selected ? 'selected' : ''}>${esc(o)}</option>`).join('');
-}
-
-function emotionOpts(selected) {
-  return (
-    `<option value="" ${!selected ? 'selected' : ''}>— tanlang —</option>` +
-    allEmotions(selected).map((o) => `<option value="${esc(o)}" ${o === selected ? 'selected' : ''}>${esc(o)}</option>`).join('') +
-    '<option value="__new__">＋ Yangi teg...</option>'
-  );
-}
-
-function linkCell(t, key) {
-  const v = t[key];
-  return `<div class="linkcell">
-    <input type="text" data-f="${key}" value="${esc(v)}" placeholder="https://..." class="link">
-    ${isHttp(v) ? `<a href="${esc(v.trim())}" target="_blank" rel="noopener noreferrer" title="Yangi oynada ochish">↗</a>` : ''}
-  </div>`;
-}
-
-function cellHTML(t, key) {
-  switch (key) {
-    case 'date':
-      return `<input type="date" data-f="date" value="${esc(t.date)}">`;
-    case 'pair':
-      return `<input type="text" data-f="pair" class="pair" value="${esc(t.pair)}" placeholder="BTCUSDT">`;
-    case 'position':
-      return `<select class="pill ${t.position === 'Long' ? 'long' : 'short'}" data-f="position">${opts(POSITIONS, t.position)}</select>`;
-    case 'entry':
-      return `<input type="number" step="any" class="num" data-f="entry" value="${t.entry ?? ''}">`;
-    case 'exit':
-      return `<input type="number" step="any" class="num" data-f="exit" value="${t.exit ?? ''}">`;
-    case 'before':
-      return linkCell(t, 'before');
-    case 'after':
-      return linkCell(t, 'after');
-    case 'argument':
-      return `<select data-f="argument">${opts(ARGUMENTS, t.argument)}</select>`;
-    case 'risk':
-      return `<span class="unit"><input type="number" step="0.1" min="0" class="num" data-f="risk" value="${t.risk}">%</span>`;
-    case 'rr':
-      return `<span class="unit">1:<input type="number" step="0.1" min="0" class="num" data-f="rr" value="${t.rr}"></span>`;
-    case 'profit':
-      return `<input type="number" step="0.01" class="num ${t.profit < 0 ? 'neg' : 'pos'}" data-f="profit" value="${t.profit}">`;
-    case 'result':
-      return `<select class="pill ${resultCls(t.result)}" data-f="result">${opts(RESULTS, t.result)}</select>`;
-    case 'emotion':
-      return `<select class="pill ${toneCls(t.emotion)}" data-f="emotion">${emotionOpts(t.emotion)}</select>`;
-    case 'comment':
-      return `<input type="text" class="wide" data-f="comment" value="${esc(t.comment)}" placeholder="Izoh...">`;
-    default:
-      return '';
-  }
-}
-
-function renderTable() {
-  const cols = COLUMNS.filter(([k]) => settings.visible.includes(k));
-  $('#thead').innerHTML = '<tr>' + cols.map(([, label]) => `<th>${esc(label)}</th>`).join('') + '<th></th></tr>';
-  const list = visibleTrades();
-  $('#tbody').innerHTML = list
-    .map(
-      (t) => `<tr data-id="${esc(t.id)}">
-        ${cols.map(([k]) => `<td>${cellHTML(t, k)}</td>`).join('')}
-        <td class="actions">
-          <button class="open-btn" data-open="${esc(t.id)}">OPEN</button>
-          <button class="icon" data-del="${esc(t.id)}" title="O'chirish">🗑</button>
-        </td>
-      </tr>`,
-    )
-    .join('');
-  $('#empty').hidden = list.length > 0;
-  $('#rowCount').textContent = `${list.length} / ${trades.length} savdo`;
-}
-
-function buildProps() {
-  $('#props').innerHTML = COLUMNS.map(
-    ([k, label]) =>
-      `<label class="check"><input type="checkbox" data-col="${k}" ${settings.visible.includes(k) ? 'checked' : ''}> ${esc(label)}</label>`,
-  ).join('');
-}
-
-/* ===================== CELL EDITING ===================== */
-function styleCell(el, t) {
-  const f = el.dataset.f;
-  if (f === 'position') el.className = 'pill ' + (t.position === 'Long' ? 'long' : 'short');
-  if (f === 'result') el.className = 'pill ' + resultCls(t.result);
-  if (f === 'emotion') el.className = 'pill ' + toneCls(t.emotion);
-  if (f === 'profit') el.className = 'num ' + (t.profit < 0 ? 'neg' : 'pos');
-}
-
-function onCellChange(e) {
-  const el = e.target;
-  const field = el.dataset.f;
-  if (!field) return;
-  const row = el.closest('tr');
-  const t = trades.find((x) => x.id === row.dataset.id);
-  if (!t) return;
-
-  if (field === 'emotion' && el.value === '__new__') {
-    const name = (prompt('Yangi hissiyot nomi:') || '').trim();
-    if (name) t[field] = name;
-    persist();
-    renderAll();
-    return;
-  }
-
-  let v = el.value;
-  if (field === 'entry' || field === 'exit') v = v === '' ? null : Number(v);
-  else if (['risk', 'rr', 'profit'].includes(field)) v = Number(v) || 0;
-  else if (field === 'pair') v = v.trim().toUpperCase();
-  else if (['comment', 'before', 'after'].includes(field)) v = v.trim();
-  t[field] = v;
-
-  persist();
-  styleCell(el, t);
-  if (field === 'before' || field === 'after') renderTable(); // refresh the ↗ link
-  refreshSummary();
-}
-
-function addTrade() {
-  const t = blankTrade();
-  trades.push(t);
-  persist();
-  // Always append at the very bottom: clear filters and sorting so the new row is visible last
-  resetFilterInputs();
-  renderAll();
-  const row = document.querySelector(`#tbody tr[data-id="${t.id}"]`);
-  if (row) {
-    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    row.querySelector('[data-f="pair"]').focus({ preventScroll: true });
-  }
-}
-
-function deleteTrade(id) {
-  if (!confirm("Bu savdoni o'chirasizmi?")) return;
-  trades = trades.filter((t) => t.id !== id);
-  persist();
-  if (drawer.id === id) closeDrawer();
-  renderAll();
-}
-
-/* ===================== FILTERS ===================== */
-function readFilters() {
-  filters = {
-    search: $('#search').value,
-    pos: $('#fPos').value,
-    res: $('#fRes').value,
-    arg: $('#fArg').value,
-    mood: $('#fMood').value,
-    sort: $('#fSort').value,
-  };
+function renderAll() {
   renderTable();
-}
-function resetFilterInputs() {
-  ['#search', '#fPos', '#fRes', '#fArg', '#fMood'].forEach((id) => ($(id).value = ''));
-  $('#fSort').value = 'default';
-  readFilters();
+  renderStats();
 }
 
-/* ===================== DRAWER (side-peek) ===================== */
-function fillEmotionSelect(sel, value) {
-  sel.innerHTML =
-    '<option value="">— tanlang —</option>' +
-    allEmotions(value).map((o) => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
-  sel.value = value || '';
-}
-
-function openDrawer(id) {
-  const t = trades.find((x) => x.id === id);
+/* ---------- EVENTS (delegated, no focus loss) ---------- */
+$("#journal").addEventListener("input", e => {
+  const el = e.target, id = el.dataset.id, f = el.dataset.f;
+  if (!id || !f) return;
+  const t = trades.find(x => x.id === id);
   if (!t) return;
-  drawer = { id, draft: JSON.parse(JSON.stringify(t)) };
-  DRAWER_FIELDS.forEach((f) => {
-    if (f === 'emotion') return;
-    const el = $('#d_' + f);
-    if (el) el.value = drawer.draft[f] ?? '';
-  });
-  fillEmotionSelect($('#d_emotion'), drawer.draft.emotion);
-  $('#dCustom').value = '';
-  $('#drawerTitle').textContent = `${t.pair || 'Savdo'} · ${t.date}`;
-  renderGallery();
-  $('#overlay').hidden = false;
-  $('#drawer').hidden = false;
-}
+  t[f] = el.value;
+  if (f === "hissiyot") el.closest("tr").className = el.value;
+  saveTrades();
+  renderStats();
+});
+$("#journal").addEventListener("change", e => e.target.dispatchEvent(new Event("input", {bubbles: true})));
+$("#journal").addEventListener("click", e => {
+  const id = e.target.dataset.del;
+  if (!id) return;
+  if (!confirm("Bu savdoni o'chirasizmi?")) return;
+  trades = trades.filter(t => t.id !== id);
+  saveTrades(); renderAll();
+});
 
-function closeDrawer() {
-  drawer = { id: null, draft: null };
-  $('#overlay').hidden = true;
-  $('#drawer').hidden = true;
-}
+$("#addBtn").onclick = () => {
+  trades.push(newTrade());
+  saveTrades(); renderAll();
+  const last = $("#journal").lastElementChild;
+  last?.scrollIntoView({behavior: "smooth", block: "center"});
+  last?.querySelector("input")?.focus();
+};
 
-function saveDrawer() {
-  const d = drawer.draft;
-  if (!d) return;
-  DRAWER_FIELDS.forEach((f) => {
-    let v = $('#d_' + f).value;
-    if (f === 'entry' || f === 'exit') v = v === '' ? null : Number(v);
-    else if (['risk', 'rr', 'profit'].includes(f)) v = Number(v) || 0;
-    else if (f === 'pair') v = v.trim().toUpperCase();
-    else if (typeof v === 'string') v = v.trim();
-    d[f] = v;
-  });
-  if (!d.date) return alert('Sanani kiriting');
-  if (!d.pair) return alert('Juftlikni kiriting');
-  const i = trades.findIndex((x) => x.id === drawer.id);
-  if (i > -1) trades[i] = d;
-  persist();
-  closeDrawer();
-  renderAll();
-}
+const savedStart = localStorage.getItem("tj_start");
+if (savedStart !== null) $("#startBal").value = savedStart;
+$("#startBal").addEventListener("input", e => {
+  localStorage.setItem("tj_start", e.target.value);
+  renderStats();
+});
+window.addEventListener("resize", renderStats);
 
-function renderGallery() {
-  const shots = drawer.draft ? drawer.draft.shots : [];
-  $('#dGallery').innerHTML = shots.length
-    ? shots
-        .map(
-          (s, i) => `<div class="thumb">
-            <img src="${s.src}" alt="${s.kind}" data-zoom="${i}" title="Kattalashtirish">
-            <span class="kind">${s.kind === 'before' ? 'Before' : 'After'}</span>
-            <button class="thumb-rm" data-rm="${i}" title="O'chirish">✕</button>
-          </div>`,
-        )
-        .join('')
-    : '<div class="muted small">Hali skrinshot yo\'q</div>';
-}
-
-function compressImage(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(reader.error);
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error('Rasm ochilmadi'));
-      img.onload = () => {
-        const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
-        const c = document.createElement('canvas');
-        c.width = Math.round(img.width * scale);
-        c.height = Math.round(img.height * scale);
-        const ctx = c.getContext('2d');
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, c.width, c.height);
-        ctx.drawImage(img, 0, 0, c.width, c.height);
-        resolve(c.toDataURL('image/jpeg', 0.85));
-      };
-      img.src = String(reader.result);
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-async function uploadShots(kind, input) {
-  const files = Array.from(input.files || []);
-  input.value = '';
-  for (const f of files) {
-    try {
-      drawer.draft.shots.push({ id: uid(), kind, src: await compressImage(f) });
-    } catch {
-      alert(`Rasm o'qilmadi: ${f.name}`);
-    }
-  }
-  renderGallery();
-}
-
-function openLightbox(src) {
-  $('#lbImg').src = src;
-  $('#lb').hidden = false;
-}
-function closeLightbox() {
-  $('#lb').hidden = true;
-}
-
-function openLink(url) {
-  if (!isHttp(url)) return alert('Link https:// bilan boshlanishi kerak');
-  window.open(url.trim(), '_blank', 'noopener,noreferrer');
-}
-
-/* ===================== IMPORT / EXPORT ===================== */
-function exportJSON() {
-  const payload = { app: 'trading-journal', version: 3, exportedAt: new Date().toISOString(), trades };
-  const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `trading-journal-${todayStr()}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function importJSON(e) {
-  const file = e.target.files && e.target.files[0];
-  e.target.value = '';
-  if (!file) return;
-  file
-    .text()
-    .then((text) => {
-      const data = JSON.parse(text);
-      const arr = Array.isArray(data) ? data : data.trades;
-      if (!Array.isArray(arr)) throw new Error('format');
-      const incoming = arr.map(normalize);
-      const map = new Map(trades.map((t) => [t.id, t]));
-      incoming.forEach((t) => map.set(t.id, t));
-      trades = [...map.values()];
-      persist();
-      renderAll();
-      alert(`${incoming.length} ta savdo yuklandi.`);
-    })
-    .catch(() => alert("Fayl noto'g'ri formatda."));
-}
-
-/* ===================== CHARTS ===================== */
-function chartConfig(stroke) {
-  return {
-    type: 'line',
-    data: {
-      labels: [],
-      datasets: [
-        {
-          label: 'Balans',
-          data: [],
-          borderColor: stroke,
-          borderWidth: 2.5,
-          tension: 0.25,
-          fill: false,
-          pointRadius: 5,
-          pointHoverRadius: 7,
-          pointBorderColor: '#0f1115',
-          pointBackgroundColor: [],
-          // Segment color: green when the line goes up, red when it goes down
-          segment: { borderColor: (c) => (c.p1.parsed.y >= c.p0.parsed.y ? GREEN : RED) },
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { color: MUTED, maxRotation: 45, autoSkip: true }, grid: { color: '#2a2f3a' } },
-        y: { ticks: { color: MUTED }, grid: { color: '#2a2f3a' } },
-      },
-    },
-  };
-}
-
-function initCharts() {
-  if (typeof Chart === 'undefined') {
-    $('#chartWarn').hidden = false;
-    return;
-  }
-  eqChart = new Chart($('#eqChart'), chartConfig('#94a3b8'));
-  emoChart = new Chart($('#emoChart'), chartConfig('#a78bfa'));
-}
-
-/* ===================== EVENTS ===================== */
-function bindEvents() {
-  $('#addBtn').onclick = addTrade;
-  $('#exportBtn').onclick = exportJSON;
-  $('#importInput').onchange = importJSON;
-
-  $('#search').addEventListener('input', readFilters);
-  ['#fPos', '#fRes', '#fArg', '#fMood', '#fSort'].forEach((id) => $(id).addEventListener('change', readFilters));
-  $('#resetFilters').onclick = resetFilterInputs;
-
-  $('#period').onchange = (e) => {
-    settings.period = e.target.value;
-    saveSettings();
-    renderMonthly();
-    renderCharts();
-  };
-  $('#startBal').onchange = (e) => {
-    settings.startBal = Number(e.target.value) || 0;
-    saveSettings();
-    renderAll();
-  };
-  $('#monthly').onclick = (e) => {
-    const b = e.target.closest('[data-month]');
-    if (!b) return;
-    settings.period = b.dataset.month;
-    saveSettings();
-    renderAll();
-  };
-
-  $('#propsBtn').onclick = () => {
-    $('#props').hidden = !$('#props').hidden;
-  };
-  $('#props').onchange = (e) => {
-    const k = e.target.dataset.col;
-    if (!k) return;
-    settings.visible = e.target.checked ? [...settings.visible, k] : settings.visible.filter((x) => x !== k);
-    saveSettings();
-    renderTable();
-  };
-
-  $('#tbody').addEventListener('change', onCellChange);
-  $('#tbody').addEventListener('click', (e) => {
-    const open = e.target.closest('[data-open]');
-    if (open) return openDrawer(open.dataset.open);
-    const del = e.target.closest('[data-del]');
-    if (del) deleteTrade(del.dataset.del);
-  });
-
-  $('#overlay').onclick = closeDrawer;
-  $('#dClose').onclick = closeDrawer;
-  $('#dCancel').onclick = closeDrawer;
-  $('#dSave').onclick = saveDrawer;
-  $('#dDelete').onclick = () => deleteTrade(drawer.id);
-  $('#dBeforeFile').onchange = (e) => uploadShots('before', e.target);
-  $('#dAfterFile').onchange = (e) => uploadShots('after', e.target);
-  $('#dBeforeOpen').onclick = () => openLink($('#d_before').value);
-  $('#dAfterOpen').onclick = () => openLink($('#d_after').value);
-  $('#dCustomBtn').onclick = () => {
-    const name = $('#dCustom').value.trim();
-    if (!name) return;
-    drawer.draft.emotion = name;
-    fillEmotionSelect($('#d_emotion'), name);
-    $('#dCustom').value = '';
-  };
-  $('#dGallery').onclick = (e) => {
-    const z = e.target.closest('[data-zoom]');
-    if (z) return openLightbox(drawer.draft.shots[Number(z.dataset.zoom)].src);
-    const r = e.target.closest('[data-rm]');
-    if (r) {
-      drawer.draft.shots.splice(Number(r.dataset.rm), 1);
-      renderGallery();
-    }
-  };
-  $('#lb').onclick = closeLightbox;
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
-    if (!$('#lb').hidden) closeLightbox();
-    else if (!$('#drawer').hidden) closeDrawer();
-  });
-}
-
-/* ===================== INIT ===================== */
-(async function init() {
-  loadSettings();
-  $('#startBal').value = settings.startBal;
-  buildProps();
-  bindEvents();
-  initCharts();
-
-  const saved = await loadTrades();
-  if (saved) {
-    trades = saved;
-  } else {
-    trades = SAMPLE.map((t) => ({ ...t, shots: [] }));
-    persist();
-  }
-  renderAll();
-})();
+/* ---------- START ---------- */
+boot();
 </script>
 </body>
 </html>
